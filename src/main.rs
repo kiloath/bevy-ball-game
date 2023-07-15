@@ -21,27 +21,27 @@ fn main() {
         .init_resource::<StarSpawnTimer>()
         .init_resource::<EnemySpawnTimer>()
         .add_event::<GameOver>()
-        .add_startup_system(spawn_camera)
-        .add_startup_system(spawn_player)
-        .add_startup_system(spawn_enemies)
-        .add_startup_system(spawn_stars)
-        .add_system(player_movement)
-        .add_system(confine_player_movement)
-        .add_system(enemy_movement)
-        .add_system(update_enemy_direction)
-        .add_system(confine_enemy_movement)
-        .add_system(enemy_hit_player)
-        .add_system(player_hit_star)
-        .add_system(update_score)
-        .add_system(tick_star_spawn_timer)
-        .add_system(spawn_stars_over_time)
-        .add_system(tick_enemy_spawn_timer)
-        .add_system(spawn_enemies_over_time)
-        .add_system(exit_game)
-        .add_system(handle_game_over)
-        .add_system(update_high_scores)
-        .add_system(high_scores_updated)
-        .run();
+        .add_systems(Startup, spawn_camera)
+        .add_systems(Startup, spawn_player)
+        .add_systems(Startup, spawn_enemies)
+        .add_systems(Startup, spawn_stars)
+        .add_systems(FixedUpdate, player_movement)
+        .add_systems(Update, confine_player_movement)
+        .add_systems(Update, enemy_movement)
+        .add_systems(Update, update_enemy_direction)
+        .add_systems(Update, confine_enemy_movement)
+        .add_systems(Update, enemy_hit_player)
+        .add_systems(Update, player_hit_star)
+        .add_systems(Update, update_score)
+        .add_systems(Update, tick_star_spawn_timer)
+        .add_systems(Update, spawn_stars_over_time)
+        .add_systems(Update, tick_enemy_spawn_timer)
+        .add_systems(Update, spawn_enemies_over_time)
+        .add_systems(Update, exit_game)
+        .add_systems(Update, handle_game_over)
+        .add_systems(Update, update_high_scores)
+        .add_systems(Update, high_scores_updated)
+        .run()
 }
 
 #[derive(Component)]
@@ -103,20 +103,14 @@ impl Default for EnemySpawnTimer {
     }
 }
 
+#[derive(Event)]
 pub struct GameOver {
     pub score: u32,
 }
 
-pub fn spawn_player(
-    mut commands: Commands,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    asset_server: Res<AssetServer>,
-) {
-    let window = window_query.get_single().unwrap();
-
+pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         SpriteBundle {
-            transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
             texture: asset_server.load("sprites/ball_blue_large.png"),
             ..default()
         },
@@ -124,13 +118,8 @@ pub fn spawn_player(
     ));
 }
 
-pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>) {
-    let window = window_query.get_single().unwrap();
-
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
-        ..default()
-    });
+pub fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle { ..default() });
 }
 
 pub fn spawn_enemies(
@@ -141,8 +130,8 @@ pub fn spawn_enemies(
     let window = window_query.get_single().unwrap();
 
     for _ in 0..NUMBER_OF_ENEMIES {
-        let random_x = random::<f32>() * window.width();
-        let random_y = random::<f32>() * window.height();
+        let random_x = rand::thread_rng().gen_range(-0.5..=0.5) * window.width();
+        let random_y = rand::thread_rng().gen_range(-0.5..=0.5) * window.height();
 
         commands.spawn((
             SpriteBundle {
@@ -151,7 +140,11 @@ pub fn spawn_enemies(
                 ..default()
             },
             Enemy {
-                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+                direction: Vec2::new(
+                    rand::thread_rng().gen_range(-1.0..=1.0),
+                    rand::thread_rng().gen_range(-1.0..=1.0),
+                )
+                .normalize(),
             },
         ));
     }
@@ -165,8 +158,8 @@ pub fn spawn_stars(
     let window = window_query.get_single().unwrap();
 
     for _ in 0..NUMBER_OF_STARS {
-        let random_x = random::<f32>() * window.width();
-        let random_y = random::<f32>() * window.height();
+        let random_x = rand::thread_rng().gen_range(-0.5..=0.5) * window.width();
+        let random_y = rand::thread_rng().gen_range(-0.5..=0.5) * window.height();
 
         commands.spawn((
             SpriteBundle {
@@ -216,10 +209,10 @@ pub fn confine_player_movement(
         let window = window_query.get_single().unwrap();
 
         let half_player_size = PLAYER_SIZE / 2.0; // 32.0
-        let x_min = 0.0 + half_player_size;
-        let x_max = window.width() - half_player_size;
-        let y_min = 0.0 + half_player_size;
-        let y_max = window.height() - half_player_size;
+        let x_min = window.width() * -0.5 + half_player_size;
+        let x_max = window.width() * 0.5 - half_player_size;
+        let y_min = window.height() * -0.5 + half_player_size;
+        let y_max = window.height() * 0.5 - half_player_size;
 
         let mut translation = player_transform.translation;
 
@@ -250,26 +243,26 @@ pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &Enemy)>, time: Re
 pub fn update_enemy_direction(
     mut enemy_query: Query<(&Transform, &mut Enemy)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    audio: Res<Audio>,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
     let window = window_query.get_single().unwrap();
 
     let half_enemy_size = ENEMY_SIZE / 2.0; // 32.0
-    let x_min = 0.0 + half_enemy_size;
-    let x_max = window.width() - half_enemy_size;
-    let y_min = 0.0 + half_enemy_size;
-    let y_max = window.height() - half_enemy_size;
+    let x_min = window.width() * -0.5 + half_enemy_size + 1.0;
+    let x_max = window.width() * 0.5 - half_enemy_size - 1.0;
+    let y_min = window.height() * -0.5 + half_enemy_size + 1.0;
+    let y_max = window.height() * 0.5 - half_enemy_size - 1.0;
 
     for (transform, mut enemy) in enemy_query.iter_mut() {
         let mut direction_changed = false;
 
         let translation = transform.translation;
-        if translation.x < x_min || translation.x > x_max {
+        if translation.x <= x_min || translation.x >= x_max {
             enemy.direction.x *= -1.0;
             direction_changed = true;
         }
-        if translation.y < y_min || translation.y > y_max {
+        if translation.y <= y_min || translation.y >= y_max {
             enemy.direction.y *= -1.0;
             direction_changed = true;
         }
@@ -277,15 +270,19 @@ pub fn update_enemy_direction(
         // Play SFX
         if direction_changed {
             // Play Sound Effect
-            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
-            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+
+            let sound_effect_1 = "audio/pluck_001.ogg";
+            let sound_effect_2 = "audio/pluck_002.ogg";
             // Randomly play one of the two sound effects.
             let sound_effect = if random::<f32>() > 0.5 {
                 sound_effect_1
             } else {
                 sound_effect_2
             };
-            audio.play(sound_effect);
+            commands.spawn(AudioBundle {
+                source: asset_server.load(sound_effect),
+                settings: PlaybackSettings::DESPAWN,
+            });
         }
     }
 }
@@ -297,10 +294,10 @@ pub fn confine_enemy_movement(
     let window = window_query.get_single().unwrap();
 
     let half_enemy_size = ENEMY_SIZE / 2.0;
-    let x_min = 0.0 + half_enemy_size;
-    let x_max = window.width() - half_enemy_size;
-    let y_min = 0.0 + half_enemy_size;
-    let y_max = window.height() - half_enemy_size;
+    let x_min = window.width() * -0.5 + half_enemy_size;
+    let x_max = window.width() * 0.5 - half_enemy_size;
+    let y_min = window.height() * -0.5 + half_enemy_size;
+    let y_max = window.height() * 0.5 - half_enemy_size;
 
     for mut transform in enemy_query.iter_mut() {
         let mut translation = transform.translation;
@@ -328,7 +325,6 @@ pub fn enemy_hit_player(
     mut player_query: Query<(Entity, &Transform), With<Player>>,
     enemy_query: Query<&Transform, With<Enemy>>,
     asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
     score: Res<Score>,
 ) {
     if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
@@ -340,8 +336,10 @@ pub fn enemy_hit_player(
             let enemy_radius = ENEMY_SIZE / 2.0;
             if distance < player_radius + enemy_radius {
                 println!("Enemy hit player! Game Over!");
-                let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
-                audio.play(sound_effect);
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/explosionCrunch_000.ogg"),
+                    settings: PlaybackSettings::DESPAWN,
+                });
                 commands.entity(player_entity).despawn();
                 game_over_event_writer.send(GameOver { score: score.value });
             }
@@ -354,7 +352,6 @@ pub fn player_hit_star(
     player_query: Query<&Transform, With<Player>>,
     star_query: Query<(Entity, &Transform), With<Star>>,
     asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
     mut score: ResMut<Score>,
 ) {
     if let Ok(player_transform) = player_query.get_single() {
@@ -366,8 +363,10 @@ pub fn player_hit_star(
             if distance < PLAYER_SIZE / 2.0 + STAR_SIZE / 2.0 {
                 println!("Player hit star!");
                 score.value += 1;
-                let sound_effect = asset_server.load("audio/laserLarge_000.ogg");
-                audio.play(sound_effect);
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/laserLarge_000.ogg"),
+                    settings: PlaybackSettings::DESPAWN,
+                });
                 commands.entity(star_entity).despawn();
             }
         }
@@ -419,8 +418,8 @@ pub fn spawn_enemies_over_time(
     if enemy_spawn_timer.timer.finished() {
         let window = window_query.get_single().unwrap();
 
-        let random_x = random::<f32>() * window.width();
-        let random_y = random::<f32>() * window.height();
+        let random_x = rand::thread_rng().gen_range(-0.5..=0.5) * window.width();
+        let random_y = rand::thread_rng().gen_range(-0.5..=0.5) * window.height();
 
         commands.spawn((
             SpriteBundle {
@@ -429,7 +428,11 @@ pub fn spawn_enemies_over_time(
                 ..default()
             },
             Enemy {
-                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+                direction: Vec2::new(
+                    rand::thread_rng().gen_range(-0.5..=0.5),
+                    rand::thread_rng().gen_range(-0.5..=0.5),
+                )
+                .normalize(),
             },
         ));
     }
