@@ -15,8 +15,8 @@ pub fn spawn_enemies(
     let window = window_query.get_single().unwrap();
 
     for _ in 0..NUMBER_OF_ENEMIES {
-        let random_x = random::<f32>() * window.width();
-        let random_y = random::<f32>() * window.height();
+        let random_x = rand::thread_rng().gen_range(-0.5..=0.5) * window.width();
+        let random_y = rand::thread_rng().gen_range(-0.5..=0.5) * window.height();
 
         commands.spawn((
             SpriteBundle {
@@ -25,7 +25,11 @@ pub fn spawn_enemies(
                 ..default()
             },
             Enemy {
-                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+                direction: Vec2::new(
+                    rand::thread_rng().gen_range(-1.0..=1.0),
+                    rand::thread_rng().gen_range(-1.0..=1.0),
+                )
+                .normalize(),
             },
         ));
     }
@@ -53,10 +57,10 @@ pub fn update_enemy_direction(
     let window = window_query.get_single().unwrap();
 
     let half_enemy_size = ENEMY_SIZE / 2.0; // 32.0
-    let x_min = 0.0 + half_enemy_size;
-    let x_max = window.width() - half_enemy_size;
-    let y_min = 0.0 + half_enemy_size;
-    let y_max = window.height() - half_enemy_size;
+    let x_min = window.width() * -0.5 + half_enemy_size;
+    let x_max = window.width() * 0.5 - half_enemy_size;
+    let y_min = window.height() * -0.5 + half_enemy_size;
+    let y_max = window.height() * 0.5 - half_enemy_size;
 
     for (transform, mut enemy) in enemy_query.iter_mut() {
         // let mut direction_changed = false;
@@ -132,8 +136,8 @@ pub fn spawn_enemies_over_time(
     if enemy_spawn_timer.timer.finished() {
         let window = window_query.get_single().unwrap();
 
-        let random_x = random::<f32>() * window.width();
-        let random_y = random::<f32>() * window.height();
+        let random_x = rand::thread_rng().gen_range(-0.5..=0.5) * window.width();
+        let random_y = rand::thread_rng().gen_range(-0.5..=0.5) * window.height();
 
         commands.spawn((
             SpriteBundle {
@@ -142,7 +146,11 @@ pub fn spawn_enemies_over_time(
                 ..default()
             },
             Enemy {
-                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+                direction: Vec2::new(
+                    rand::thread_rng().gen_range(-0.5..=0.5),
+                    rand::thread_rng().gen_range(-0.5..=0.5),
+                )
+                .normalize(),
             },
         ));
     }

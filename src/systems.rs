@@ -1,17 +1,11 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 
 use crate::events::*;
 use crate::AppState;
 
-pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>) {
-    let window = window_query.get_single().unwrap();
-
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
-        ..default()
-    });
+pub fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle { ..default() });
 }
 
 pub fn transition_to_game_state(
